@@ -16,15 +16,19 @@ import socketserver
 import serial
 import threading
 import sqlite3
+import datetime
 
-HOST           = "0.0.0.0"
-UDP_PORT       = 10000
-MICRO_COMMANDS = ["TL" , "LT"]
+'''
+ * variables for script
+'''
+HOST            = "0.0.0.0"
+UDP_PORT        = 10000
+MICRO_COMMANDS  = ["TL" , "LT"]
 FILENAME        = "values.txt"
 LAST_VALUE      = "deadbeef"
+SERIALPORT      = "/dev/tty.usbmodem14102"
+BAUDRATE        = 115200
 
-SERIALPORT = "/dev/tty.usbmodem14102"
-BAUDRATE = 115200
 ser = serial.Serial()
 
 # -------------------- Class -------------------- #
@@ -39,7 +43,8 @@ class ThreadedUDPRequestHandler(socketserver.BaseRequestHandler):
             if data.decode() in MICRO_COMMANDS:                         # Send message through UART
                 sendUARTMessage(data)
             elif data.decode("UTF-8") == "getValues()":                 # Sent last value received from micro-controller
-                socket.sendto(LAST_VALUE.encode(), self.client_address)    
+                last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1") # Modif a tester 4
+                socket.sendto(last_value.encode(), self.client_address)    
             else:                                                       # Check errors 
                 print(f"Unknown message: {data}")
 
@@ -88,15 +93,15 @@ def db_connect(sqlite_path):
         print(f"Erreur : {error}")
 
 '''
- * database query executor function
+ * database query insert executor function
 '''
-def query_executor(query):
+def query_insert_executor(query):
     try:
         db = db_connect("/Users/alexis/iot.db")
         cursor = db.cursor()
         cursor.execute(query)
         db.commit()
-        print(f"Record inserted successfully into SqliteDb_developers table. Added row : {cursor.rowcount}")
+        print(f"Record inserted successfully -> added row : {cursor.rowcount}")
         cursor.close()
     except (sqlite3.Error, KeyboardInterrupt, SystemExit) as errors:
         print(f"Failed to insert data into sqlite table {errors}")
@@ -107,12 +112,33 @@ def query_executor(query):
             print("The SQLite connection is closed")
 
 '''
+ * get last inserted row
+'''
+def query_select_one_executor(query):
+    try:
+        db = db_connect("/Users/alexis/iot.db")
+        cursor = db.cursor()
+        cursor.execute(query)
+        return cursor.fetchone()[0]
+    except (sqlite3.Error, KeyboardInterrupt, SystemExit) as errors:
+        print(f"Failed to execute query {errors}")
+        cursor.close()
+    finally:
+        if db:
+            cursor.close()
+            db.close()
+            print("The SQLite connection is closed")
+
+
+'''
  * main program logic follows:
 '''
 if __name__ == '__main__':
     initUART()
     #f = open(FILENAME,"a")
-    # query_executor("INSERT INTO 'values' (received_data) VALUES ('test')") # Modif a tester 3
+    '''query_insert_executor("INSERT INTO message (received_data) VALUES ('test1')") # Modif a tester 3
+    test = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1") # Modif a tester 4
+    print(test)'''
     print ('Press Ctrl-C to quit.')
 
     server = ThreadedUDPServer((HOST, UDP_PORT), ThreadedUDPRequestHandler)
@@ -130,10 +156,10 @@ if __name__ == '__main__':
                 if "\t" in data_bytes:
                     data_str.replace("\t", "")
                     print(data_str)
-                    query_executor("INSERT INTO 'values' (received_data) VALUES ('" + data_str + "')") # Modif a tester 3
+                    query_insert_executor("INSERT INTO message (received_data) VALUES ('" + data_str + "')") # Modif a tester 3
                     # f.write(data_str)
                     # f.flush()
-                    LAST_VALUE = data_str
+                    # LAST_VALUE = data_str
                     data_str = ""
     except (KeyboardInterrupt, SystemExit):
         server.shutdown()

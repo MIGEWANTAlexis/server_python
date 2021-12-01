@@ -57,7 +57,7 @@ class ThreadedUDPRequestHandler(socketserver.BaseRequestHandler):
             elif decrypt(data.decode("UTF-8"), ENCRYPT) == "getValues()":                 # Sent last value received from micro-controller
                 last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1") # Modif a tester 3
                 socket.sendto(encrypt(last_value, ENCRYPT).encode(), self.client_address) # Modif a tester 1
-            else:                                                       # Check errors 
+            else:                                                                         # Check errors 
                 print(f"Unknown message: {data}")
 
 class ThreadedUDPServer(socketserver.ThreadingMixIn, socketserver.UDPServer):
@@ -180,7 +180,7 @@ if __name__ == '__main__':
         data_str = ""
         while ser.isOpen() : 
             if (ser.inWaiting() > 0): # if incoming bytes are waiting 
-                data_bytes = ser.read(ser.inWaiting()).decode("utf-8")
+                data_bytes = ser.read(ser.inWaiting()).decode("UTF-8")
                 data_str += data_bytes
                 if "\t" in data_bytes:
                     data_str.replace("\t", "")

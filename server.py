@@ -16,7 +16,18 @@ import socketserver
 import serial
 import threading
 import sqlite3
-import datetime
+
+'''
+Modif a tester :
+1   -> encryptage des données vers le microcontroleur en serial 
+        (a voir avec eriau, quand on envoie TL ou LT par android le serial doit envoyer les données au microbit connecté en usb)
+    -> encryptage des données vers l'application android
+
+2   -> les données sont elles envoyées dans la base de données
+
+3   -> la dernière données est restitué à l'application android quand on fait un getValues()
+
+'''
 
 '''
  * variables for script
@@ -28,6 +39,7 @@ FILENAME        = "values.txt"
 LAST_VALUE      = "deadbeef"
 SERIALPORT      = "/dev/tty.usbmodem14102"
 BAUDRATE        = 115200
+ENCRYPT         = 3
 
 ser = serial.Serial()
 
@@ -37,14 +49,14 @@ class ThreadedUDPRequestHandler(socketserver.BaseRequestHandler):
         data = self.request[0].strip()
         socket = self.request[1]
         current_thread = threading.current_thread()
-        print(f"{current_thread.name}: client: {self.client_address}, wrote: {data}") # Modif a vérifier 1
-
+        print(f"{current_thread.name}: client: {self.client_address}, wrote: {data}")
+        # Modif a tester 1 -> vérifier tous les decrypt
         if data != "":
-            if data.decode() in MICRO_COMMANDS:                         # Send message through UART
+            if decrypt(data.decode(), ENCRYPT) in MICRO_COMMANDS:                         # Send message through UART
                 sendUARTMessage(data)
-            elif data.decode("UTF-8") == "getValues()":                 # Sent last value received from micro-controller
-                last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1") # Modif a tester 4
-                socket.sendto(last_value.encode(), self.client_address)    
+            elif decrypt(data.decode("UTF-8"), ENCRYPT) == "getValues()":                 # Sent last value received from micro-controller
+                last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1") # Modif a tester 3
+                socket.sendto(encrypt(last_value, ENCRYPT).encode(), self.client_address) # Modif a tester 1
             else:                                                       # Check errors 
                 print(f"Unknown message: {data}")
 
@@ -79,7 +91,7 @@ def initUART():
 '''
 def sendUARTMessage(msg):
     ser.write(msg)
-    print(f"Message <{msg.decode()}> sent to micro-controller") # Modif a tester 2
+    print(f"Message <{msg.decode()}> sent to micro-controller")
 
 '''
  * database connection function
@@ -129,6 +141,23 @@ def query_select_one_executor(query):
             db.close()
             print("The SQLite connection is closed")
 
+'''
+ * function that encrypts the sent data
+'''
+def encrypt(msg, shiftPattern):
+    res = ""
+    for i in range(len(msg)):
+        res += chr(ord(msg[i]) + shiftPattern)
+    return res
+
+'''
+ * function that encrypts the received data
+'''
+def decrypt(msg, shiftPattern):
+    res = ""
+    for i in range(len(msg)):
+        res += chr(ord(msg[i]) - shiftPattern)
+
 
 '''
  * main program logic follows:
@@ -136,8 +165,8 @@ def query_select_one_executor(query):
 if __name__ == '__main__':
     initUART()
     #f = open(FILENAME,"a")
-    '''query_insert_executor("INSERT INTO message (received_data) VALUES ('test1')") # Modif a tester 3
-    test = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1") # Modif a tester 4
+    '''query_insert_executor("INSERT INTO message (received_data) VALUES ('l:59,t:31')")
+    test = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1")
     print(test)'''
     print ('Press Ctrl-C to quit.')
 
@@ -156,7 +185,7 @@ if __name__ == '__main__':
                 if "\t" in data_bytes:
                     data_str.replace("\t", "")
                     print(data_str)
-                    query_insert_executor("INSERT INTO message (received_data) VALUES ('" + data_str + "')") # Modif a tester 3
+                    query_insert_executor("INSERT INTO message (received_data) VALUES ('" + data_str + "')") # Modif a tester 2
                     # f.write(data_str)
                     # f.flush()
                     # LAST_VALUE = data_str

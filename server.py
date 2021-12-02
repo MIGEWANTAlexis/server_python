@@ -85,7 +85,6 @@ def initUART():
         print(f"Serial {SERIALPORT} port not available")
         exit()
 
-
 '''
  * send message to microcontroller with serial
 '''
@@ -157,7 +156,6 @@ def decrypt(msg, shiftPattern):
     res = ""
     for i in range(len(msg)):
         res += chr(ord(msg[i]) - shiftPattern)
-
 
 '''
  * main program logic follows:

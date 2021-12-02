@@ -4,6 +4,16 @@
 
 Le code est fonctionnel et commenté. Attention, il a été adapté en fonction de la machine qui l'exécute → avec le port serial notamment.
 
+Le code est adapté pour **`python3`** :
+```bash
+python3 server.py
+```
+
+Il a fallu installé **`pyserial`** :
+```bash
+pip3 install pyserial
+```
+
 Nous n'avons pas suivi d'architecture spéciale pour ce projet, nous avons simplement adapté le code existant en fonction de notre architecture IoT.
 
 # Architecture

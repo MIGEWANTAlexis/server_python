@@ -156,6 +156,7 @@ def decrypt(msg, shiftPattern):
     res = ""
     for i in range(len(msg)):
         res += chr(ord(msg[i]) - shiftPattern)
+    return res
 
 '''
  * main program logic follows:

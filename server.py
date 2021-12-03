@@ -3,31 +3,10 @@
  * USB tty -> /dev/tty.usbmodem14102
 '''
 
-'''
-A supprimer ?
-from os import wait
-import time
-import argparse
-import signal
-import sys
-import socket
-'''
 import socketserver
 import serial
 import threading
 import sqlite3
-
-'''
-Modif a tester :
-1   -> encryptage des données vers le microcontroleur en serial 
-        (a voir avec eriau, quand on envoie TL ou LT par android le serial doit envoyer les données au microbit connecté en usb)
-    -> encryptage des données vers l'application android
-
-2   -> les données sont elles envoyées dans la base de données
-
-3   -> la dernière données est restitué à l'application android quand on fait un getValues()
-
-'''
 
 '''
  * variables for script
@@ -49,16 +28,15 @@ class ThreadedUDPRequestHandler(socketserver.BaseRequestHandler):
         data = self.request[0].strip()
         socket = self.request[1]
         current_thread = threading.current_thread()
-        print(f"{current_thread.name}: client: {self.client_address}, wrote: {data}")
-        # Modif a tester 1 -> vérifier tous les decrypt
+        print(f"{current_thread.name}: client: {self.client_address}, wrote: {decrypt(data.decode(), ENCRYPT)}")
         if data != "":
             if decrypt(data.decode(), ENCRYPT) in MICRO_COMMANDS:                         # Send message through UART
-                sendUARTMessage(data)
+                sendUARTMessage(decrypt(data.decode(), ENCRYPT).encode())
             elif decrypt(data.decode("UTF-8"), ENCRYPT) == "getValues()":                 # Sent last value received from micro-controller
-                last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1") # Modif a tester 3
-                socket.sendto(encrypt(last_value, ENCRYPT).encode(), self.client_address) # Modif a tester 1
+                last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1")
+                socket.sendto(encrypt(last_value, ENCRYPT).encode(), self.client_address)
             else:                                                                         # Check errors 
-                print(f"Unknown message: {data}")
+                print(f"Unknown message: {decrypt(data.decode(), ENCRYPT)}")
 
 class ThreadedUDPServer(socketserver.ThreadingMixIn, socketserver.UDPServer):
     pass
@@ -163,28 +141,25 @@ def decrypt(msg, shiftPattern):
 '''
 if __name__ == '__main__':
     initUART()
-    #f = open(FILENAME,"a")
-    '''query_insert_executor("INSERT INTO message (received_data) VALUES ('l:59,t:31')")
-    test = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1")
-    print(test)'''
+    # f = open(FILENAME,"a")
     print ('Press Ctrl-C to quit.')
 
-    server = ThreadedUDPServer((HOST, UDP_PORT), ThreadedUDPRequestHandler)
-    server_thread = threading.Thread(target = server.serve_forever)
-    server_thread.daemon = True
+    server                  = ThreadedUDPServer((HOST, UDP_PORT), ThreadedUDPRequestHandler)
+    server_thread           = threading.Thread(target = server.serve_forever)
+    server_thread.daemon    = True
 
     try:
         server_thread.start()
         print(f"Server started at {HOST} port {UDP_PORT}")
         data_str = ""
         while ser.isOpen() : 
-            if (ser.inWaiting() > 0): # if incoming bytes are waiting 
-                data_bytes = ser.read(ser.inWaiting()).decode("UTF-8")
+            if (ser.inWaiting() > 0): # if incoming bytes are waiting
+                data_bytes = ser.read(ser.inWaiting()).decode("utf-8")
                 data_str += data_bytes
                 if "\t" in data_bytes:
                     data_str.replace("\t", "")
                     print(data_str)
-                    query_insert_executor("INSERT INTO message (received_data) VALUES ('" + data_str + "')") # Modif a tester 2
+                    query_insert_executor("INSERT INTO message (received_data) VALUES ('" + data_str + "')")
                     # f.write(data_str)
                     # f.flush()
                     # LAST_VALUE = data_str

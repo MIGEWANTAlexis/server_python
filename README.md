@@ -48,7 +48,7 @@ Description des variables :
 
 ### Cryptage
 
-```sql
+```python
 '''
  * function that encrypts the sent data
 '''
@@ -65,25 +65,26 @@ def decrypt(msg, shiftPattern):
     res = ""
     for i in range(len(msg)):
         res += chr(ord(msg[i]) - shiftPattern)
+    return res
 ```
 
 Nous avons ajouté le même système de cryptage que dans l'application Android, ce cryptage est utilisé pour :
 
 - Crypter les données envoyées à l'application android
     
-    ```sql
+    ```python
     last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1")
     socket.sendto(encrypt(last_value, ENCRYPT).encode(), self.client_address)
     ```
     
 - Décrypter les données reçues par l'application android
     
-    ```sql
-    if decrypt(data.decode(), ENCRYPT) in MICRO_COMMANDS:
-        sendUARTMessage(data)
-    elif decrypt(data.decode("UTF-8"), ENCRYPT) == "getValues()":
-    	last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1")
-    	socket.sendto(encrypt(last_value, ENCRYPT).encode(), self.client_address)
+    ```python
+    if decrypt(data.decode(), ENCRYPT) in MICRO_COMMANDS:                         # Send message through UART
+	    sendUARTMessage(decrypt(data.decode(), ENCRYPT).encode())
+    elif decrypt(data.decode("UTF-8"), ENCRYPT) == "getValues()":                 # Sent last value received from micro-controller
+	    last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1")
+	    socket.sendto(encrypt(last_value, ENCRYPT).encode(), self.client_address)
     ```
     
 
@@ -91,20 +92,19 @@ Nous avons ajouté le même système de cryptage que dans l'application Android,
 
 ```python
 class ThreadedUDPRequestHandler(socketserver.BaseRequestHandler):
-    def handle(self):
-        data = self.request[0].strip()
-        socket = self.request[1]
-        current_thread = threading.current_thread()
-        print(f"{current_thread.name}: client: {self.client_address}, wrote: {data}")
-
-        if data != "":
-            if decrypt(data.decode(), ENCRYPT) in MICRO_COMMANDS:                         # Send message through UART
-                sendUARTMessage(data)
-            elif decrypt(data.decode("UTF-8"), ENCRYPT) == "getValues()":                 # Sent last value received from micro-controller
-                last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1")
-                socket.sendto(encrypt(last_value, ENCRYPT).encode(), self.client_address)
-            else:                                                                         # Check errors 
-                print(f"Unknown message: {data}")
+	def handle(self):
+		data = self.request[0].strip()
+		socket = self.request[1]
+		current_thread = threading.current_thread()
+		print(f"{current_thread.name}: client: {self.client_address}, wrote: {decrypt(data.decode(), ENCRYPT)}")
+		if data != "":
+			if decrypt(data.decode(), ENCRYPT) in MICRO_COMMANDS:                         # Send message through UART
+				sendUARTMessage(decrypt(data.decode(), ENCRYPT).encode())
+			elif decrypt(data.decode("UTF-8"), ENCRYPT) == "getValues()":                 # Sent last value received from micro-controller
+				last_value = query_select_one_executor("SELECT received_data FROM message ORDER BY id DESC LIMIT 1")
+				socket.sendto(encrypt(last_value, ENCRYPT).encode(), self.client_address)
+			else:                                                                         # Check errors 
+				print(f"Unknown message: {decrypt(data.decode(), ENCRYPT)}")
 ```
 
 Concernant la classe qui va détecter les requêtes UDP en direction du serveur :

@@ -154,7 +154,7 @@ if __name__ == '__main__':
         data_str = ""
         while ser.isOpen() : 
             if (ser.inWaiting() > 0): # if incoming bytes are waiting
-                data_bytes = ser.read(ser.inWaiting()).decode("utf-8")
+                data_bytes = ser.read(ser.inWaiting()).decode("UTF-8")
                 data_str += data_bytes
                 if "\t" in data_bytes:
                     data_str.replace("\t", "")

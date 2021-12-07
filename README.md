@@ -43,7 +43,7 @@ ENCRYPT         = 3
 Description des variables :
 
 - `HOST           = "0.0.0.0"` → Toute connexion entrante sur le serveur est acceptée
-- `SERIALPORT     = "/dev/tty.usbmodem14102"` → indique le port serial sur lequel le microcontrôleur est connecté. `*/dev/tty.usbmodem14102` correspond au deuxième port d'un MacBook Pro de 2019*
+- `SERIALPORT     = "/dev/tty.usbmodem14102"` → indique le port serial sur lequel le microcontrôleur est connecté. `/dev/tty.usbmodem14102` correspond au deuxième port d'un MacBook Pro de 2019*
 - `ENCRYPT           = 3` → Clé de cryptage et de décryptage
 
 ### Cryptage
